@@ -43,18 +43,37 @@ int main( void )
       p++;
     }
     c = *p;
-
     if( isdigit(c)) {
 
       // INSERT CODE FOR JUMPING TO MESSAGE k
     }
     else switch( c ) {
-
+	int i = 1;
     case 'a': case 'A': // Add item
       // MODIFY THIS CODE, AS APPROPRIATE
-      node = getNode();
+      list = add_to_tail( node = getNode(), list ); //creates new node, stores in 'node' and then returns the head of the linked list to 'list'
       printFull( node );
       break;
+	case 'l': case 'L':
+		node = list;
+		if (list != NULL) {
+			while (i < globalMessageNum) {
+				printf(" %2d ", node->messageNum);
+				printBrief(node);
+				node = node->next;
+				//printf("test");
+				i++;
+			}
+			if ((i == globalMessageNum) && globalMessageNum >1) {
+				printf("->%2d ",node->messageNum);
+			}
+		}
+		break;
+	
+	case 'p': case 'P':
+			
+	
+		
 
       // INSERT CODE HERE
 
@@ -391,4 +410,19 @@ void freeList( MsgNode *head )
     free( node->text );
     free( node );
   }
+}
+
+MsgNode * add_to_tail( MsgNode *new_node, MsgNode *head)
+{
+	if(head == NULL) {
+		head = new_node;
+	}
+	else {
+		MsgNode *node = head;
+		while( node->next != NULL ) {
+			node = node->next;
+		}
+		node->next = new_node;
+	}
+	return( head );
 }

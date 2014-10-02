@@ -45,6 +45,7 @@ struct msgNode {
 
 // INSERT NEW FUNCTION PROTOTYPES, AS APPROPRIATE
 
+MsgNode * add_to_tail( MsgNode *new_node, MsgNode *head);
 void printPrompt();
 void   printHelp();
 MsgNode *getNode( void );

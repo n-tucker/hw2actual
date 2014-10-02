@@ -57,7 +57,7 @@ int main( void )
 	case 'l': case 'L':
 		node = list;
 		if (list != NULL) {
-			while (i < globalMessageNum) {
+			while (i < globalMessageNum-1) {
 				printf(" %2d ", node->messageNum);
 				printBrief(node);
 				node = node->next;
@@ -66,6 +66,7 @@ int main( void )
 			}
 			if ((i == globalMessageNum) && globalMessageNum >1) {
 				printf("->%2d ",node->messageNum);
+				printf("test2");
 			}
 		}
 		break;
@@ -206,39 +207,38 @@ char * getName( void )
 */
 char * getText( void )
 {
-  char buffer[MAX_TEXT];
-  char *text;
-  int length;
-  int ch;
-  int i;
+	char buffer[MAX_TEXT];
+	char *text;
+	int length;
+	int ch;
+	int i;
+	printf("Text: ");
+	ch = getchar();
+	i=0;
+	while(( i < MAX_TEXT )&&( ch != EOF )) {
+		buffer[i++] = ch;
+		ch = getchar();
+		// stop when you encounter a dot on a line by itself
+		if( i > 1 && ch == '\n' && buffer[i-1] == '.'
+								&& buffer[i-2] == '\n' ) {
+			ch = EOF;
+			i  = i-2; // strip off the dot and newlines
+		}
+	}
+	length = i;
+	// allocate just enough space to store the string
+	text = (char *)malloc((length+1)*sizeof(char));
+	if( text == NULL ) {
+		printf("Error: could not allocate memory.\n");
+		exit( 1 );
+	}
+	// copy text from buffer to new string
+	for( i=0; i<length; i++ ) {
+		text[i] = buffer[i];
+	}
+	text[i] = '\0'; // add end-of-string marker
 
-  printf("Text: ");
-  ch = getchar();
-  i=0;
-  while(( i < MAX_TEXT )&&( ch != EOF )) {
-     buffer[i++] = ch;
-     ch = getchar();
-     // stop when you encounter a dot on a line by itself
-     if( i > 1 && ch == '\n' && buffer[i-1] == '.'
-                             && buffer[i-2] == '\n' ) {
-        ch = EOF;
-        i  = i-2; // strip off the dot and newlines
-     }
-  }
-  length = i;
-  // allocate just enough space to store the string
-  text = (char *)malloc((length+1)*sizeof(char));
-  if( text == NULL ) {
-     printf("Error: could not allocate memory.\n");
-     exit( 1 );
-  }
-  // copy text from buffer to new string
-  for( i=0; i<length; i++ ) {
-     text[i] = buffer[i];
-  }
-  text[i] = '\0'; // add end-of-string marker
-
-  return( text );
+	return( text );
 }
 
 /************************************************************

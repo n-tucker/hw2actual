@@ -297,11 +297,34 @@ int scanTime( Time *t )
 /************************************************************
    Return TRUE if date is valid; FALSE otherwise.
 */
-int dateOK( Date *d )
-{
-  // INSERT CODE HERE
+int dateOK( Date *d ) {
+	
+  if (d->month == 2 && (d->year)%4 == 0) {
+    return(   d->day   > 0 && d->day   <= 29
+           && d->month > 0 && d->month <= 12
+           && d->year >= 1582 );
+  }
+  else if (d->month == 2) {
+    return(   d->day   > 0 && d->day   <= 28
+           && d->month > 0 && d->month <= 12
+           && d->year >= 1582 );
+  }
+  else if (d->month == 1 || d->month == 3 || d->month == 5 || d->month == 7 || d->month == 8 || d->month == 10 || d->month == 12) {
+  return(   d->day   > 0 && d->day   <= 31
+         && d->month > 0 && d->month <= 12
+         && d->year >= 1582 );
+  }
+  else if(d->month == 4 || d->month == 6 || d->month == 9 || d->month == 11) {
+    return(   d->day   > 0 && d->day   <= 30
+           && d->month > 0 && d->month <= 12
+           && d->year >= 1582 );
+  }
+    
+  else {
+  return FALSE;
+  }
 
-  return TRUE;
+
 }
 
 /************************************************************

@@ -57,22 +57,22 @@ int main( void )
 	case 'l': case 'L':
 		node = list;
 		if (list != NULL) {
-			while (i < globalMessageNum-1) {
-				printf(" %2d ", node->messageNum);
+			while (node->messageNum < globalMessageNum-1) {
+				printf("  %2d ", node->messageNum);
 				printBrief(node);
 				node = node->next;
 				//printf("test");
 				i++;
 			}
-			if ((i == globalMessageNum) && globalMessageNum >1) {
+			if ((node->messageNum == globalMessageNum-1) && globalMessageNum >1) {
 				printf("->%2d ",node->messageNum);
-				printf("test2");
+				printBrief(node);
 			}
 		}
 		break;
-	
 	case 'p': case 'P':
-			
+		printFull( node );
+		break;	
 	
 		
 
@@ -81,8 +81,8 @@ int main( void )
       // TO IMPLEMENT OTHER COMMANDS
 
     case 'h': case 'H': // Help
-      printHelp();
-      break;
+		printHelp();
+		break;
 
     case 'q': case 'Q': // Quit
       freeList( list );

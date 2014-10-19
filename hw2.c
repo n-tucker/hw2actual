@@ -8,7 +8,7 @@
 
    UNSW Session 2, 2014
 */
-
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,22 +18,31 @@
 #include "hw2.h"
 
 
-int globalMessageNum = 1;
-
-
+int globalMessageNum = 0;
+int currentMessageNum = 0;
 int main( void )
 {
   MsgNode *list = NULL;
   MsgNode *node;
   char command[MAX_LINE];
   char c;
-
+  int printCase = 0;
+  int listCase = 0;
   printPrompt();
 
   // enter a loop, reading and executing commands from the user
   while( fgets(command,MAX_LINE,stdin) != NULL ) {
-    char *p;
+	Undo storage1;
+	Undo storage2;
+	
+	storage2 = storage1;
+	storage1.list = list;
+	storage1.printCase = printCase;	//Storage for useful variables
+	storage1.listCase = listCase;
+	storage1.currentMessageNum = currentMessageNum;
+	storage1.globalMessageNum = globalMessageNum;
 
+	char *p;
     // replace newline with end-of-string character
     if(( p = strchr(command,'\n')) != NULL ) {
       *p = '\0';
@@ -46,34 +55,104 @@ int main( void )
     if( isdigit(c)) {
 
       // INSERT CODE FOR JUMPING TO MESSAGE k
+		int i = c - '0';
+		if ((node != NULL) && (i <= globalMessageNum) && (0 < i)) {
+			node = list;
+			while (node->messageNum != i) {	//Scans through until message with message number <k> is found 
+			node = node->next;
+			}
+			currentMessageNum = node->messageNum;
+			overallPrintArgument( printCase, list );
+		}
     }
     else switch( c ) {
-	int i = 1;
     case 'a': case 'A': // Add item
-      // MODIFY THIS CODE, AS APPROPRIATE
-      list = add_to_tail( node = getNode(), list ); //creates new node, stores in 'node' and then returns the head of the linked list to 'list'
-      printFull( node );
-      break;
+		list = add_to_tail( node = getNode(), list ); //creates new node, stores in 'node' and then returns the head of the linked list to 'list'
+		overallPrintArgument(printCase, list);
+		break;
 	case 'l': case 'L':
-		node = list;
-		if (list != NULL) {
-			while (node->messageNum < globalMessageNum-1) {
-				printf("  %2d ", node->messageNum);
-				printBrief(node);
-				node = node->next;
-				//printf("test");
-				i++;
-			}
-			if ((node->messageNum == globalMessageNum-1) && globalMessageNum >1) {
-				printf("->%2d ",node->messageNum);
-				printBrief(node);
-			}
+		printCase = 1;
+		listCase = 1;
+		overallPrintArgument(printCase,list);
+		break;
+		
+	case 'p': case 'P':
+		if (list != NULL){
+		printCase = 0;
+		overallPrintArgument(printCase, currentNode(list));
 		}
 		break;
-	case 'p': case 'P':
-		printFull( node );
-		break;	
+		
+	case 'd': case 'D':
+		node = currentNode(list);	//Gets the current node and sets msg->deleted to be true
+		node->deleted = TRUE;
+		overallPrintArgument(printCase, list);
+		break;
+		
+	case 'f': case 'F':
+		
+		if (currentNode(list)->next != NULL) {
+			if (((listCase == 0)||(listCase == 1)) && (currentMessageNum < globalMessageNum)) {
+				currentMessageNum++;
+			}		//Different display cases, depending on whether 'L' of 'P' was last selected
+			else if (listCase == 2) {
+				//if (currentNode(list)->next != NULL) {
+				node = currentNode( list )->next;
+				currentMessageNum = node->messageNum;	
+			}
+			overallPrintArgument(printCase, list);
+		}
+		break;
+		
+	case 'b': case 'B':
+		if (currentNode (list) != list) {
+			if ((listCase == 1) || (listCase == 0)) {
+				currentMessageNum--;
+			}		//Different display cases, depending on whether 'L' of 'P' was last selected
+			else if (listCase == 2) {
+				MsgNode *temp = list;
+				while (temp-> next != currentNode(list) ){
+				temp = temp->next;
+				}
+				currentMessageNum = temp-> messageNum;
+			}
+			overallPrintArgument(printCase, list);
+		}
+		break;
+			
+	case 'r': case 'R':
+		if (list != NULL) {//&& (currentNode(list)->next != NULL)){
+		storage1.isReply = 1;
+		storage1.replynode = currentNode(list)->next;	//Sets new item to be next to replied item in linked list
+		insertNode( list );
+		overallPrintArgument(printCase, list);
+		}
+		break;
 	
+	case 't': case 'T':
+		printCase = 2;
+		listCase = 2;
+		overallPrintArgument(printCase, list );
+		break;
+		
+	
+	case 's': case 'S':
+		search(list);
+		break;
+	
+	
+	case 'u': case 'U':
+		list = storage2.list;
+		printCase = storage2.printCase;	//Checks to see if 'L' or 'P' was last used
+		listCase = storage2.listCase;
+		currentMessageNum = storage2.currentMessageNum;	//Gets variables from storage2 structure
+		globalMessageNum = storage2.globalMessageNum;
+		if (storage2.isReply == 1) {	//Checks to see if 'R' was last used
+			currentNode(list)-> next = storage2.replynode;
+		}
+		overallPrintArgument(printCase, list);
+		break; 
+		
 		
 
       // INSERT CODE HERE
@@ -144,11 +223,14 @@ MsgNode * getNode( void )
      printf("Error: could not allocate memory.\n");
      exit( 1 );
   }
-  new_node->messageNum= globalMessageNum++;
+  globalMessageNum++;
+  new_node->found 	  = 0;
+  new_node->messageNum= globalMessageNum;
+  currentMessageNum   = globalMessageNum;
   new_node->inReplyTo = 0;
   new_node->indent    = 0;
   new_node->deleted   = FALSE;
-  new_node->name      = getName();
+  new_node->name      = getName();	//All the elements of a node
   getDate( &new_node->date );
   getTime( &new_node->time );
   new_node->text      = getText();
@@ -261,7 +343,7 @@ int scanDate( Date *d )
   char s[MAX_LINE];
 
   fgets( s, MAX_LINE, stdin );
-  if(sscanf(s,"%d/%d/%d",&d->day,&d->month,&d->year)<3){
+  if(sscanf(s,"%d/%d/%d",&d->day,&d->month,&d->year)<3){	//Checks for 3 imputs
     return FALSE;
   }
   if( d->year < 100 ) { // turn /12 into /2012, etc.
@@ -277,7 +359,7 @@ int scanDate( Date *d )
 void getTime( Time *t )
 {
   printf("Time: ");
-  while( !scanTime( t ) || !timeOK( t )) {
+  while( !scanTime( t ) || !timeOK( t )) {	//Checks for 3 imputs
      printf("Re-enter time in format hh:mm:ss: ");
   }
 }
@@ -297,11 +379,34 @@ int scanTime( Time *t )
 /************************************************************
    Return TRUE if date is valid; FALSE otherwise.
 */
-int dateOK( Date *d )
-{
-  // INSERT CODE HERE
+int dateOK( Date *d ) {
+	
+  if (d->month == 2 && (d->year)%4 == 0) {	//Checks leap year case
+    return(   d->day   > 0 && d->day   <= 29
+           && d->month > 0 && d->month <= 12
+           && d->year >= 1582 );
+  }
+  else if (d->month == 2) {	//Checks February case
+    return(   d->day   > 0 && d->day   <= 28
+           && d->month > 0 && d->month <= 12
+           && d->year >= 1582 );
+  }
+  else if (d->month == 1 || d->month == 3 || d->month == 5 || d->month == 7 || d->month == 8 || d->month == 10 || d->month == 12) {
+  return(   d->day   > 0 && d->day   <= 31	//All months with 31 days
+         && d->month > 0 && d->month <= 12
+         && d->year >= 1582 );
+  }
+  else if(d->month == 4 || d->month == 6 || d->month == 9 || d->month == 11) {
+    return(   d->day   > 0 && d->day   <= 30	//All months with 30 days
+           && d->month > 0 && d->month <= 12
+           && d->year >= 1582 );
+  }
+    
+  else {
+  return FALSE;
+  }
 
-  return TRUE;
+
 }
 
 /************************************************************
@@ -310,7 +415,7 @@ int dateOK( Date *d )
 int timeOK( Time *t )
 {
   return(   t->hour   >= 0 && t->hour   < 24
-         && t->minute >= 0 && t->minute < 60
+         && t->minute >= 0 && t->minute < 60	//Checks time is valid
          && t->second >= 0 && t->second < 60 );
 }
 
@@ -359,7 +464,7 @@ void printBrief( MsgNode * msg )
 {
   char *text=msg->text;
   int i=0,j=0;
-  if( msg->deleted ) {
+  if( msg->deleted ) {	//Checks to see is msg->deleted has been set to true
     printf("[deleted]\n");
   }
   else {
@@ -367,7 +472,7 @@ void printBrief( MsgNode * msg )
     while( isspace( text[i] )) {
       i++;
     }
-    while( j < 40 && text[i+j] != '\0'
+    while( j < 40 && text[i+j] != '\0'	//Else prints out name and text of message
                   && text[i+j] != '\n' ) {
       putchar( text[i+j] );
       j++;
@@ -382,14 +487,14 @@ void printBrief( MsgNode * msg )
 void printFull( MsgNode * msg )
 {
   if( msg != NULL ) {
-    printf("Message %d", msg->messageNum );
+    printf("Message %d", msg->messageNum );	//Checks to see if msg->deleted has been set to true
     if( msg->deleted ) {
       printf(" has been deleted.\n");
     }
     else {
       printf("\nDate: ");
       printDate( msg->date );
-      printf("\nTime: ");
+      printf("\nTime: ");	//Else prints out date, time, name and test of message
       printTime( msg->time );
       printf("\nName: %s\n", msg->name );
       printf("Text: %s\n", msg->text );
@@ -405,7 +510,7 @@ void freeList( MsgNode *head )
   MsgNode *node;
   while( head != NULL ) {
     node = head;
-    head = head->next;
+    head = head->next;	//Frees space malloc'd for nodes in linked list
     free( node->name );
     free( node->text );
     free( node );
@@ -419,10 +524,211 @@ MsgNode * add_to_tail( MsgNode *new_node, MsgNode *head)
 	}
 	else {
 		MsgNode *node = head;
-		while( node->next != NULL ) {
+		while( node->next != NULL ) {	//finds last node in linked list
 			node = node->next;
 		}
-		node->next = new_node;
+		node->next = new_node;	//Sets next node to be the new node
 	}
 	return( head );
 }
+
+void actualPrintBrief( MsgNode* list)
+{
+	int i = 1;
+	MsgNode *node = list;
+	MsgNode* array[globalMessageNum+1];
+	while (node != NULL) {
+		array[node->messageNum] = node;
+		node = node->next;
+	}
+	while (i < globalMessageNum+1) {
+		if (array[i]->messageNum == currentMessageNum){
+			printf("->%2d ",array[i]->messageNum);
+		}
+		else {
+			printf("  %2d ", array[i]->messageNum);
+		}
+		printBrief(array[i]);
+		i++;
+	}
+}
+
+void overallPrintArgument (int printCase, MsgNode *list) {
+	if (list != NULL) {
+		MsgNode* node = currentNode(list);
+		printf("\n");
+		if (printCase == 0) {
+			printFull(node);
+		}
+		else if (printCase == 1) {
+			actualPrintBrief( list );
+		}
+		else if (printCase == 2) {
+			printThread(list);
+		}
+		printf("\n");
+	}
+}
+
+
+void printSpace(MsgNode *node) 
+{
+	int i = 0;
+	while ( i < node->indent) {
+		printf("   ");
+		i++;
+	}
+}
+
+MsgNode *currentNode( MsgNode *head ) {
+	MsgNode *node = head;
+	while (node->messageNum != currentMessageNum) {
+		node = node->next;
+	}
+	return( node );
+}
+
+MsgNode *getReply( MsgNode *list , MsgNode *node)
+{
+  MsgNode *new_node;
+  MsgNode *inreplyto;
+  inreplyto = currentNode(list);
+  new_node = (MsgNode *)malloc(sizeof(MsgNode));
+  if( new_node == NULL ) {
+     printf("Error: could not allocate memory.\n");
+     exit( 1 );
+  }
+  globalMessageNum++;
+  new_node->found =0;
+  new_node->messageNum = globalMessageNum;
+  currentMessageNum = globalMessageNum;
+  new_node->inReplyTo = inreplyto->messageNum;
+  new_node->indent    = inreplyto->indent + 1;
+  new_node->deleted   = FALSE;
+  new_node->name      = getName();
+  getDate( &new_node->date );
+  getTime( &new_node->time );
+  new_node->text      = getText();
+  new_node->next = node->next;
+  node->next = new_node;
+  //printf("test1");
+  return( new_node );
+}
+
+void insertNode( MsgNode *list ){
+	MsgNode *node = currentNode( list );
+	MsgNode *tempPointer = currentNode( list );
+	while ((tempPointer->next != NULL) && (tempPointer->next->indent > node->indent)) {
+		tempPointer = tempPointer->next;
+	}
+	node= tempPointer;
+	node->next = getReply( list , node );
+}
+
+void printThread( MsgNode *list ){
+	MsgNode *node = list;
+	while(node != NULL){
+		if (node->messageNum == currentMessageNum) {
+			printf("->");
+		}
+		else {
+			printf("  ");
+		}
+		printf("%2d ",node->messageNum);
+		printSpace(node);
+		printBrief(node);
+		node = node->next;
+	}
+}
+		
+void search(MsgNode * list) {
+	MsgNode* node;
+	node = list;
+	char search[256] = {0};
+	getSearch(search);
+	while (node != NULL) {
+		MsgNode* new_node; 
+		new_node = getSearchNode(node);
+		char *text = NULL;
+		text = node->text;
+		int i,j,k,l;
+		j=0;
+		int text_str = strlen(text);
+		int search_str = strlen(search);
+		while (j < text_str - search_str +1) {
+			char string[256] = {0};
+			for (k = 0; k < search_str; k++) {
+				l = j;
+				string[k] = text[l+k];
+			}
+			char* temp = strcasestr(string, search);
+			i = 0;
+			int string_str = strlen(string);
+			if (temp != NULL) {
+				while( i< string_str) {
+					new_node->text[j] = toupper(string[i]);
+					new_node->found = 1;
+					i++;
+					j++;
+				}
+			}
+			else {
+				if ( j == text_str - search_str) {
+					while( i< string_str) {
+						new_node->text[j] = string[i];
+						i++;
+						j++;
+					}
+				}
+				else {
+				new_node->text[j] = string[i];
+				}
+				j++;
+			}
+		}
+		if (new_node->found == 1) {
+			printf("\n");
+			printFull(new_node);
+			printf("\n");
+			//free(new_node->text);
+			free(new_node);
+		}
+		node = node->next;
+	}
+	//free(node);
+	
+}
+	
+MsgNode * getSearchNode( MsgNode *node )
+{
+	MsgNode * new_node;
+	new_node = (MsgNode *)malloc(sizeof(MsgNode));
+	if( new_node == NULL ) {
+		printf("Error: could not allocate memory.\n");
+		exit( 1 );
+	}
+	new_node->found 	  = 0;
+	new_node->messageNum= node->messageNum;
+	new_node->inReplyTo = 0;
+	new_node->indent    = 0;
+	new_node->deleted   = FALSE;
+	new_node->name      = node->name;
+	new_node->date	    = node->date;
+	new_node->time      = node->time;
+	new_node->text 	    = (char *)malloc(sizeof(node->text));
+	new_node->next      = NULL;
+	
+	return( new_node );
+}	
+		
+char* getSearch(char searchText[256]) {
+	printf("Search text: ");
+	fflush(stdout);
+	fgets(searchText, 256, stdin);
+	int str_len = strlen(searchText);
+	if ((str_len > 0) && (searchText[str_len -1] == '\n')) {
+		searchText[str_len -1] = '\0';
+	}
+
+	return (searchText);
+}	
